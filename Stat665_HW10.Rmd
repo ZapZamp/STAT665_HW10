@@ -1,0 +1,166 @@
+---
+title: "Homework 10"
+author: "Michelle Zamperlini"
+date: "2023-11-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lme4)
+```
+
+##Problem 1
+
+*a.* Fitting the 4 way interaction model. This is our saturated model, making sure to use a negative binomial distribution and selecting the random intercept to be based on the state clusters, we fit the model below. For a comparison to the other models, the AIC is reported, AIC = 3393.785.
+
+```{r}
+model_4i <- glmer.nb(number_of_deaths ~ (1 | state) + gun_control_laws * years_past_2010 * relationship * ownership,
+      data = data)
+
+AIC(model_4i)
+```
+
+*b.* Fitting the 3 way association model. Similar to before, the model is fit to include all the 3 way interactions. The model is still incredibly complex, but we see the AIC beginning to drop from the 4 way model, although the models are not significantly different. 
+
+```{r}
+model_3i <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws * years_past_2010 * relationship +
+                       gun_control_laws * relationship * ownership +
+                       gun_control_laws * years_past_2010 * ownership +
+                       years_past_2010 * relationship * ownership,
+                     data = data)
+anova(model_3i, model_4i)
+```
+*c.* Fitting the 2 way interaction model. Now we fit a model with just the 2 way interactions. Our AIC continues to drop, now it's AIC = 3379.9, smaller than the 3 way interaction model and still not significantly different from the saturated model.
+```{r}
+model_2i <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws * years_past_2010 +
+                       gun_control_laws * relationship + 
+                       gun_control_laws * ownership +
+                       years_past_2010 * relationship +
+                       years_past_2010 * ownership +
+                       relationship * ownership,
+                  data = data)
+
+anova(model_2i, model_4i)
+```
+
+*d.* Finding a less complex model. When the coefficients of the 2 way interaction model are analyzed, only a few of the interactions are significantly non-zero, and we therefore believe there is an even less complex model to explain the data. A model with each variable, but only including the two way interaction of \([RO]\), or possibly \([RO][GR]\), may explain the data just as well, but with fewer parameters. To check if a simpler model exists a model for every individual 2 way interaction was fit and compared to the 2 way interaction model. The results are presented in the r table below:
+```{r, include = FALSE}
+model_GY <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws + 
+                       years_past_2010 + 
+                       relationship +
+                       ownership + 
+                       gun_control_laws * years_past_2010,
+                     data = data)
+
+model_GR <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws + 
+                       years_past_2010 + 
+                       relationship +
+                       ownership +
+                       gun_control_laws * relationship,
+                     data = data)
+
+model_GO <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws + 
+                       years_past_2010 + 
+                       relationship +
+                       ownership + 
+                       gun_control_laws * ownership,
+                     data = data)
+
+model_YR <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws + 
+                       years_past_2010 + 
+                       relationship +
+                       ownership + 
+                       years_past_2010 * relationship,
+                     data = data)
+
+model_YO <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws + 
+                       years_past_2010 + 
+                       relationship +
+                       ownership + 
+                       years_past_2010 * ownership,
+                     data = data)
+
+model_RO <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws + 
+                       years_past_2010 + 
+                       relationship +
+                       ownership + 
+                       relationship * ownership,
+                     data = data)
+
+comparisons <- cbind(model = c("model_2i","model_GY", "model_GR", "model_GO", "model_YR", "model_YO", "model_RO"),
+      npar = c(anova(model_GY, model_2i, test = 'LRT')$npar[2], anova(model_GY, model_2i, test = 'LRT')$npar[1],anova(model_GR, model_2i, test = 'LRT')$npar[1], anova(model_GO, model_2i, test = 'LRT')$npar[1], anova(model_YR, model_2i, test = 'LRT')$npar[1], anova(model_YO, model_2i, test = 'LRT')$npar[1], anova(model_RO, model_2i, test = 'LRT')$npar[1]),
+      AIC = c(anova(model_GY, model_2i, test = 'LRT')$AIC[2], anova(model_GY, model_2i, test = 'LRT')$AIC[1],anova(model_GR, model_2i, test = 'LRT')$AIC[1], anova(model_GO, model_2i, test = 'LRT')$AIC[1], anova(model_YR, model_2i, test = 'LRT')$AIC[1], anova(model_YO, model_2i, test = 'LRT')$AIC[1], anova(model_RO, model_2i, test = 'LRT')$AIC[1]),
+      Pval = c("NA", anova(model_GY, model_2i, test = 'LRT')$`Pr(>Chisq)`[2],anova(model_GR, model_2i, test = 'LRT')$`Pr(>Chisq)`[2], anova(model_GO, model_2i, test = 'LRT')$`Pr(>Chisq)`[2], anova(model_YR, model_2i, test = 'LRT')$`Pr(>Chisq)`[2], anova(model_YO, model_2i, test = 'LRT')$`Pr(>Chisq)`[2], anova(model_RO, model_2i, test = 'LRT')$`Pr(>Chisq)`[2]))
+
+model_RO_GR <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws + 
+                         years_past_2010 + 
+                         relationship +
+                         ownership + 
+                         relationship * ownership +
+                         gun_control_laws * relationship,
+                       data = data)
+
+basic <- glmer.nb(number_of_deaths ~ (1|state) + gun_control_laws + 
+                    years_past_2010 + 
+                    relationship +
+                    ownership,
+                  data = data)
+```
+```{r, echo=FALSE}
+comparisons
+```
+As expected, the model that includes just the two way interaction of \([RO]\) performed best, with the lowest AIC, and without being significantly different from the model that includes all the 2 way interactions. It's therefore a good alternative, as the simpler model, for our data. To ensure that the model wouldn't significantly improve by adding the next best interaction, we also check the model \([RO][GR]\). The following updates our previous table to compare the aforementioned model to the 2 way interaction. What we see is that the AIC is higher, which makes our simpler model_GO a better option. 
+
+```{r, echo = FALSE}
+rbind(comparisons, c("model_RO_GR", anova(model_RO_GR, model_2i, test = 'LRT')$npar[1], anova(model_RO_GR, model_2i, test = 'LRT')$AIC[1], anova(model_RO_GR, model_2i, test = 'LRT')$`Pr(>Chisq)`[2]))
+```
+Finally, we confirm that any interaction is even necessary. To do so, a basic model including just the predictor variables and no interaction was fit and compared to the \([RO]\) model. We see that the model using the interaction has a smaller AIC than the no-interaction model and that the significance between these models is determined to be significant, which indicates that the more complex model (the model with just one two-way interaction), is better in this scenario.
+
+```{r, echo = FALSE}
+anova(basic, model_RO, test = 'LRT')
+```
+##Problem 2 Would the systematic component you selected in Problem 1.d also be appropriate if you would fit a Poisson GLMM? Explain why or why not.
+
+##Problem 3
+
+Squared raw residuals vs the fitted values for the model \([RO]\) (assuming a negative-binomial response), with a line to visualize the variance function used in this model. \(v(\mu_i) = \mu_i + \phi\mu_i^2\)
+
+```{r, echo = FALSE}
+tibble(fitted = fitted(model_RO),
+       resid = residuals(model_RO, type = 'response'),
+       var = fitted + (fitted^2 * model_RO@theta)) %>% 
+  ggplot(aes(x = fitted, y = resid^2)) +
+  geom_point(color = 'gray50') +
+  geom_line(aes(y = var), size = 1.2) +
+  scale_y_log10() +
+  scale_x_log10()
+```
+
+Squared raw residuals vs the fitted values for the model \([RO]\) (assuming a poisson response), with a line to visualize the variance function used in this model. \(v(\mu_i) = \mu_i\)
+```{r, echo = FALSE}
+model_poisson <- glmer(number_of_deaths ~ (1|state) + gun_control_laws + 
+                       years_past_2010 + 
+                       relationship +
+                       ownership + 
+                       relationship * ownership,
+                     data = data,
+                     family = poisson('log'))
+
+tibble(fitted = fitted(model_poisson),
+       resid = residuals(model_poisson, type = 'response'),
+       var = fitted) %>% 
+  ggplot(aes(x = fitted, y = resid^2)) +
+  geom_point(color = 'gray50') +
+  geom_line(aes(y = var), size = 1.2) +
+  scale_y_log10() +
+  scale_x_log10()
+```
+
+According to these plots, the negative binomial model is not the better model for this data. As the following problem will state, it **should** be better, but that is not what is shown within these plots. When should a negative binomial be more appropriate? A negative binomial glmm is the equivalent of a poison glmm with an over/under-dispersion parameter. Should the variance of the responses be larger than the variance function of the poisson distribution would allow, there is a parameter that can be identified and added to create a better fit model. When this parameter is fixed, the poisson model takes on the characteristics of the negative binomial glmm. 
+
+##Problem 4: "Explain why the simpler model fits the data adequately well when considering a negative binomial model, but not when considering a Poisson model."
+
+The above statement does not match what was shown on the plots for my models, but if the original data is over-dispersed, i.e. has a larger variability than a standard poisson distribution, then the simpler model would not capture all the variability in the responses and more predictor variables may be required to achieve a better fit. A negative binomial distribution, though, includes an additional parameter that a poisson distribution does not, which  allows for the variance to be different from the mean of the distribution. This additional parameter can account for the additional variability seen in the response, as opposed to adding additional predictor variables to the model to do so. 
+
+
